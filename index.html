@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>REI DO APK - IPTV Total</title>
+    <script src="https://cdn.tailwindcss.com"></script> 
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        :root {
+            --config-fundo: url('https://i.supaimg.com/f39afda8-6b2e-4cf2-8ab9-b80ced5e2c75/ea4e5f51-4551-4889-85fd-ea25cfe87359.png');
+            --cor-dourado: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fcf6ba, #aa771c);
+        }
+        body { 
+            background-color: #0a0a0a;
+            background-image: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)), var(--config-fundo);
+            background-size: cover; background-position: center; background-attachment: fixed;
+            color: #fff; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; 
+        }
+        #intro-screen { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .intro-text { font-size: 3rem; font-weight: 900; background: var(--cor-dourado); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-transform: uppercase; animation: pullAndBurst 4s forwards; }
+        @keyframes pullAndBurst { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(10); opacity: 0; visibility: hidden; } }
+        
+        #btn-whatsapp { position: fixed; bottom: 80px; right: 20px; z-index: 50; background: #25d366; color: white; border-radius: 50%; width: 60px; height: 60px; display: none; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        
+        .card-item { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; overflow: hidden; transition: 0.3s; cursor: pointer; }
+        .card-item:hover { border-color: #bf953f; transform: translateY(-5px); }
+
+        #player-overlay { position: fixed; inset: 0; background: #000; z-index: 1000; display: none; flex-direction: column; }
+        .ni.active { color: #bf953f; border-bottom: 3px solid #bf953f; }
+        
+        /* Skeleton loading simples */
+        .loading-shimmer { background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    </style>
+</head>
+<body class="pb-20 md:pb-0">
+
+    <div id="intro-screen"><div class="intro-text">REI DO APK</div></div>
+
+    <a id="btn-whatsapp" href="https://chat.whatsapp.com/SEU_LINK" target="_blank"><i data-lucide="message-circle" class="w-8 h-8"></i></a>
+
+    <nav class="fixed top-0 w-full z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 h-16 flex items-center justify-between">
+        <h1 class="text-red-600 text-2xl font-black cursor-pointer" onclick="location.reload()">REI DO<span class="text-white"> APK</span></h1>
+        <ul class="hidden md:flex gap-8 text-sm uppercase font-bold">
+            <li class="ni cursor-pointer" id="nav-h" onclick="sw('h')">Início</li>
+            <li class="ni cursor-pointer" id="nav-t" onclick="sw('t')">TV</li>
+            <li class="ni cursor-pointer" id="nav-m" onclick="sw('m')">Filmes</li>
+            <li class="ni cursor-pointer" id="nav-s" onclick="sw('s')">Séries</li>
+        </ul>
+    </nav>
+
+    <div id="player-overlay">
+        <div class="flex items-center justify-between p-4 bg-[#0f0f0f]">
+            <h3 id="player-title" class="font-bold text-yellow-500 uppercase truncate pr-4">IPTV PLAYER</h3>
+            <button onclick="closePlayer()" class="bg-red-600 px-6 py-2 rounded-full text-white font-bold text-xs">FECHAR</button>
+        </div>
+        <div class="flex-1 flex items-center justify-center bg-black">
+            <video id="video-element" class="w-full h-full" controls autoplay></video>
+        </div>
+    </div>
+
+    <div id="app" class="pt-24 px-4 md:px-10 min-h-screen">
+        <div id="back-btn" class="mb-4 hidden">
+            <button onclick="sw(currentView)" class="text-yellow-500 flex items-center gap-2 font-bold uppercase text-xs">
+                <i data-lucide="chevron-left"></i> Voltar
+            </button>
+        </div>
+        <h2 id="section-title" class="text-2xl font-black mb-8 text-white uppercase border-l-4 border-yellow-600 pl-4">Conectando...</h2>
+        <div id="grid-content" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6"></div>
+    </div>
+
+    <div class="md:hidden fixed bottom-0 w-full bg-black/95 border-t border-white/10 z-40 flex justify-around p-3 text-gray-400">
+        <button onclick="sw('h')" id="mob-h"><i data-lucide="home"></i></button>
+        <button onclick="sw('t')" id="mob-t"><i data-lucide="tv"></i></button>
+        <button onclick="sw('m')" id="mob-m"><i data-lucide="film"></i></button>
+        <button onclick="sw('s')" id="mob-s"><i data-lucide="layers"></i></button>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        
+        const IPTV = {
+            url: "http://meucherry.xyz",
+            user: "004marcia",
+            pass: "Al1112"
+        };
+
+        let currentView = 'h';
+        let dataStore = { t: [], m: [], s: [] }; // Armazena Categorias
+        let contentStore = { t: [], m: [], s: [] }; // Armazena Conteúdos
+
+        async function apiFetch(action) {
+            const resp = await fetch(`${IPTV.url}/player_api.php?username=${IPTV.user}&password=${IPTV.pass}&action=${action}`);
+            return resp.json();
+        }
+
+        async function init() {
+            try {
+                // Carrega categorias de tudo
+                const [catTV, catMov, catSer] = await Promise.all([
+                    apiFetch('get_live_categories'),
+                    apiFetch('get_vod_categories'),
+                    apiFetch('get_series_categories')
+                ]);
+                dataStore.t = catTV;
+                dataStore.m = catMov;
+                dataStore.s = catSer;
+                
+                // Carrega todos os conteúdos em segundo plano
+                apiFetch('get_live_streams').then(d => contentStore.t = d);
+                apiFetch('get_vod_streams').then(d => contentStore.m = d);
+                apiFetch('get_series').then(d => contentStore.s = d);
+
+                sw('h');
+            } catch (e) {
+                document.getElementById('section-title').innerText = "Erro na Conexão!";
+            }
+        }
+
+        function sw(tab) {
+            currentView = tab;
+            const grid = document.getElementById('grid-content');
+            const title = document.getElementById('section-title');
+            const backBtn = document.getElementById('back-btn');
+            
+            grid.innerHTML = "";
+            backBtn.classList.add('hidden');
+            
+            document.querySelectorAll('.ni, .md\\:hidden button').forEach(el => el.classList.remove('active', 'text-yellow-500'));
+            document.getElementById('nav-' + tab)?.classList.add('active');
+            document.getElementById('mob-' + tab)?.classList.add('text-yellow-500');
+
+            if (tab === 'h') {
+                title.innerText = "Rei do APK - Global";
+                grid.innerHTML = `
+                    <div onclick="sw('t')" class="card-item p-10 flex flex-col items-center justify-center border-yellow-600"><i data-lucide="tv" class="w-12 h-12 text-yellow-500 mb-4"></i><b class="text-xl">TV AO VIVO</b></div>
+                    <div onclick="sw('m')" class="card-item p-10 flex flex-col items-center justify-center border-red-600"><i data-lucide="film" class="w-12 h-12 text-red-500 mb-4"></i><b class="text-xl">FILMES</b></div>
+                    <div onclick="sw('s')" class="card-item p-10 flex flex-col items-center justify-center border-blue-600"><i data-lucide="layers" class="w-12 h-12 text-blue-500 mb-4"></i><b class="text-xl">SÉRIES</b></div>
+                `;
+                lucide.createIcons();
+            } else {
+                title.innerText = tab === 't' ? "Categorias de TV" : tab === 'm' ? "Categorias de Filmes" : "Categorias de Séries";
+                let cats = dataStore[tab];
+                grid.innerHTML = cats.map(c => `
+                    <div onclick="loadCategory('${tab}', '${c.category_id}', '${c.category_name}')" class="card-item p-4 text-center">
+                        <b class="text-sm uppercase">${c.category_name}</b>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function loadCategory(type, catId, catName) {
+            const grid = document.getElementById('grid-content');
+            const title = document.getElementById('section-title');
+            const backBtn = document.getElementById('back-btn');
+            
+            title.innerText = catName;
+            backBtn.classList.remove('hidden');
+            grid.innerHTML = "<p>Carregando conteúdos...</p>";
+
+            const filtered = contentStore[type].filter(item => item.category_id === catId);
+            
+            grid.innerHTML = filtered.map(item => {
+                const img = item.stream_icon || item.cover || 'https://via.placeholder.com/300x450?text=REI+DO+APK';
+                const id = item.stream_id || item.series_id;
+                return `
+                    <div onclick="playIPTV('${id}', '${type}', '${item.name || item.title}')" class="card-item">
+                        <img src="${img}" class="w-full ${type === 't' ? 'h-32' : 'aspect-[2/3]'} object-cover" onerror="this.src='https://via.placeholder.com/300x450?text=REI+DO+APK'">
+                        <p class="p-2 text-[10px] font-bold truncate uppercase">${item.name || item.title}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function playIPTV(id, type, name) {
+            const overlay = document.getElementById('player-overlay');
+            const video = document.getElementById('video-element');
+            let streamUrl = "";
+            
+            if(type === 't') streamUrl = `${IPTV.url}/live/${IPTV.user}/${IPTV.pass}/${id}.m3u8`;
+            else if(type === 'm') streamUrl = `${IPTV.url}/movie/${IPTV.user}/${IPTV.pass}/${id}.mp4`;
+            else streamUrl = `${IPTV.url}/series/${IPTV.user}/${IPTV.pass}/${id}.mp4`; // Simplificado para Séries
+
+            document.getElementById('player-title').innerText = name;
+            overlay.style.display = "flex";
+
+            if (Hls.isSupported() && type === 't') {
+                const hls = new Hls(); hls.loadSource(streamUrl); hls.attachMedia(video);
+            } else {
+                video.src = streamUrl;
+            }
+        }
+
+        function closePlayer() {
+            const v = document.getElementById('video-element');
+            v.pause(); v.src = "";
+            document.getElementById('player-overlay').style.display = "none";
+        }
+
+        function falarBoasVindas() {
+            const msg = new SpeechSynthesisUtterance("Rei do APK conectado com sucesso. Aproveite o conteúdo!");
+            msg.lang = 'pt-BR';
+            window.speechSynthesis.speak(msg);
+        }
+
+        window.onload = () => {
+            init();
+            setTimeout(() => {
+                document.getElementById('intro-screen').style.opacity = "0";
+                setTimeout(() => {
+                    document.getElementById('intro-screen').remove();
+                    falarBoasVindas();
+                    setTimeout(() => document.getElementById('btn-whatsapp').style.display = "flex", 60000);
+                }, 800);
+            }, 4000);
+        };
+    </script>
+</body>
+</html>
